@@ -12,7 +12,7 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'html');
 app.engine('html', swig.renderFile);
 
-// logging and body-parsing
+// logging and body-parsing boilerplate
 app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -21,7 +21,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use('/bootstrap', express.static(__dirname + '/node_modules/bootstrap/dist'));
 app.use('/jquery', express.static(__dirname + '/node_modules/jquery/dist'));
 
-// serve any other static files
+// serve any other static files -- html link hrefs will refer to this
 app.use(express.static(__dirname + '/public'));
 
 // serve dynamic routes
@@ -34,7 +34,7 @@ app.use(function (req, res, next) {
   next(err);
 });
 
-// handle any errors
+// catcher, default error handling function
 app.use(function (err, req, res, next) {
   console.error(err, err.stack);
   res.status(err.status || 500);
