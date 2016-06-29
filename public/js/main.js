@@ -48,8 +48,7 @@ $(function initializeMap (){
   };
 
   /***** PSEUDO-MODEL ******/
-  var days = [{}];
-  var currentDayIndex = 1;
+  var days = [];
   // Constructor function
   var day = function(index){
     this.index = index;
@@ -58,7 +57,18 @@ $(function initializeMap (){
     this.activityArr = [];
   }
   days.push(new day(1));
+  var currentDay = days[0];
+  var getLastDay = function(){
+    return days[days.length - 1];
+  };
 
+
+  // Helper to find day in days array by index
+  function findDayByIndex(num){
+    for(var i = 0; i<days.length;i++){
+      if(days[i].index == num) return days[i];
+    };
+  }
 
   var markers = [];
   function drawMarker (type, coords, name) {
@@ -75,7 +85,7 @@ $(function initializeMap (){
     marker.setMap(currentMap);
   }
 
-  // Fill up select fields
+  // Fill up <select> fields
   hotels.forEach(function(hotel){
     $('#hotel-choices').append('<option value="' + hotel.id + '">' +
                                  hotel.name + '</option>');
@@ -90,7 +100,7 @@ $(function initializeMap (){
   });
 
 
-  // ADD functionality 
+  // For adding items
   function addItemHelper(typeStr, typeArr){    
   // Find item that is selected
     var selectedId = $('#' + typeStr + '-choices').val();
@@ -103,7 +113,7 @@ $(function initializeMap (){
             '</div>');
 
     // Add to model
-    days[currentDayIndex][typeStr+'Arr'].push(selectedId);
+    currentDay[typeStr+'Arr'].push(selectedId);
     console.log("The Days array has been updated to: ", days);
     // Grab hotel location, set default as [0,0]
     var coords = [0,0];
@@ -129,7 +139,7 @@ $(function initializeMap (){
   });
 
 
-  // REMOVE functionality 
+  // For removing items
   function removeItemHelper(){
     // Get div that we want to delete
     var divToDelete = $(this);
@@ -151,20 +161,39 @@ $(function initializeMap (){
   $('#iti-activity-list').on('click', 'div', removeItemHelper);
 
 
-  // DAY-ADDING
+  // Day-adding
   $('#day-add').on('click', function(){
-    // Get count from text inside second last button
-    var ctr = parseInt($(this).prev().text());
-    console.log(ctr);
-    ctr++;
-    $(this).before('<button class="btn btn-circle day-btn different-day">' + ctr + '</button>');
-    days.push(new day(currentDayIndex+1))
+    var newButtonLabel = getLastDay().index + 1
+    $(this).before('<button class="btn btn-circle day-btn different-day">'+newButtonLabel+'</button>');
+    days.push(new day(newButtonLabel));
   })
+
+
+  // REBUILDER Helper for Day-switching and Day-removing
+  function rebuildHelper (typeStr, id, typeArr){
+    var currAttraction;
+    typeArr.forEach(function(obj){
+      if(obj.id == id){
+        currAttraction = obj;
+      }
+    })
+    $('#iti-' + typeStr + '-list')
+    .append('<div class="itinerary-item">' + 
+            '<span class="title">' + currAttraction.name + '</span>' +
+            '<button class="btn btn-xs btn-danger remove btn-circle">x</button>' +
+            '</div>');
+
+    // Rebuild marker
+    for(var i = 0; i < markers.length; i++){
+      if(markers[i].name == currAttraction.name){
+        markers[i].setMap(currentMap);
+      }
+    }
+  }
+
 
   // DAY-SWITCHING
   $('.day-buttons').on('click', '.btn.btn-circle.day-btn.different-day', function(){
-    console.log("Different day clicked.");
-     
     // Destroying, un-highlight previous day
     $('.current-day').removeClass('current-day').addClass('different-day');
     // Clear itinerary for each section
@@ -178,69 +207,90 @@ $(function initializeMap (){
 
     // Rebuilding, highlight newly selected day
     var selectedDayButton = $(this);
-    selectedDayButton.addClass('current-day');
-    // Change currentDayIndex
-    currentDayIndex = selectedDayButton.text();
-    console.log("Now viewing day", currentDayIndex);
-    // Build itineraries for that day
-    var selectedDay = days[currentDayIndex];
+    selectedDayButton.removeClass('different-day').addClass('current-day');
+    // Change currentDay
+    currentDay = findDayByIndex(parseInt(selectedDayButton.text()));
+    console.log("Current day has been changed to Day ", currentDay.index);
     
-    // Rebuilding Helper
-    function(typeStr, id, typeArr){
-      var currAttraction;
-      typeArr.forEach(function(obj){
-        if(obj == id){
-          currAttraction.id = obj;
-        }
-      })
-      $('#iti-' + typeStr + '-list')
-      .append('<div class="itinerary-item">' + 
-              '<span class="title">' + currAttraction.name + '</span>' +
-              '<button class="btn btn-xs btn-danger remove btn-circle">x</button>' +
-              '</div>');
-    }
+    // Change Day Title
+    $('#day-title span').text('Day ' + currentDay.index);
 
-    selectedDay.hotelArr.forEach(function(hotelId){
-      var currHotel;
-      hotels.forEach(function(hotelObj){
-        if(hotelObj.id == hotelId){
-          currHotel = hotelObj;
-        }
-      })
-      $('#iti-hotel-list')
-      .append('<div class="itinerary-item">' + 
-              '<span class="title">' + currHotel.name + '</span>' +
-              '<button class="btn btn-xs btn-danger remove btn-circle">x</button>' +
-              '</div>');
-    })
-    selectedDay.restaurantArr.forEach(function(restaurantId){
-      var currRestaurant;
-      restaurants.forEach(function(restaurantObj){
-        if(restaurantObj.id == restaurantId){
-          currRestaurant = restaurantObj;
-        }
-      })
-      $('#iti-restaurant-list')
-      .append('<div class="itinerary-item">' + 
-              '<span class="title">' + currRestaurant.name + '</span>' +
-              '<button class="btn btn-xs btn-danger remove btn-circle">x</button>' +
-              '</div>');
-    })
-    selectedDay.activityArr.forEach(function(activityId){
-      var currActivity;
-      activities.forEach(function(activityObj){
-        if(activityObj.id == activityId){
-          currActivity = activityObj;
-        }
-      })
-      $('#iti-activity-list')
-      .append('<div class="itinerary-item">' + 
-              '<span class="title">' + currActivity.name + '</span>' +
-              '<button class="btn btn-xs btn-danger remove btn-circle">x</button>' +
-              '</div>');
-    })
-
+    // Build itineraries for that day
+    currentDay.hotelArr.forEach(function(hotelId){
+      rebuildHelper('hotel', hotelId, hotels)
+    });
+    currentDay.restaurantArr.forEach(function(restaurantId){
+      rebuildHelper('restaurant', restaurantId, restaurants)
+    });
+    currentDay.activityArr.forEach(function(activityId){
+      rebuildHelper('activity', activityId, activities)
+    });
   })
+
+
+  // DAY-REMOVAL
+  $('.btn.btn-xs.btn-danger.remove.btn-circle').on('click', function(){
+    // If last day left, break
+    if (days.length <= 1) return alert('Last Day -- You cannot delete this!');
+
+    // Else proceed
+    // Unhighlight current button, mark new button to be highlighted
+    var dayButtonToDelete = $('.current-day').removeClass('current-day');
+    var dayButtonToSwitchTo;
+    // If Deleted button is the last in the row
+    if(currentDay.index < getLastDay().index){
+      // Mark the new button we want to switch to
+      dayButtonToSwitchTo = dayButtonToDelete.next();
+      // Decrement indexes for all days with indexes larger than the day we are deleting
+      days.forEach(function(day){
+        if(day.index > currentDay.index) day.index--;
+      });
+      // Remove currentDay, but note its index beforehand
+      var deletedIndex = currentDay.index; 
+      days.splice(days.indexOf(currentDay),1);
+      // Set new currentDay (which uses the index as what was just removed!)
+      currentDay = findDayByIndex(deletedIndex);
+      console.log('Days spliced, days is now', days);
+      // Change labels
+      dayButtonToDelete.nextUntil('#day-add').each(function(index){
+        var dayLabel = parseInt($(this).text());
+        $(this).text(dayLabel-1);
+      });
+    // Else if deleted button is the last in the row
+    }else{
+      dayButtonToSwitchTo = dayButtonToDelete.prev();
+      days.pop();
+      console.log('Days popped, days is now', days);
+      currentDay = findDayByIndex(currentDay.index-1);
+      // Change day title
+      $('#day-title span').text('Day ' + currentDay.index);
+    }
+    
+    // Re-organise buttons
+    dayButtonToDelete.remove();
+    dayButtonToSwitchTo.removeClass('different-day').addClass('current-day');
+
+    // Destroy old
+    $('#iti-hotel-list').empty();
+    $('#iti-restaurant-list').empty();
+    $('#iti-activity-list').empty();
+    markers.forEach(function(marker){
+      marker.setMap(null);
+    });
+
+    // Rebuild with new data
+    console.log("rebuilding with", currentDay);
+    currentDay.hotelArr.forEach(function(hotelId){
+      rebuildHelper('hotel', hotelId, hotels)
+    });
+    currentDay.restaurantArr.forEach(function(restaurantId){
+      rebuildHelper('restaurant', restaurantId, restaurants)
+    });
+    currentDay.activityArr.forEach(function(activityId){
+      rebuildHelper('activity', activityId, activities)
+    });
+  });
+
 
 });
 
